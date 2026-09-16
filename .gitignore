@@ -1,0 +1,27 @@
+# Local video and inference artifacts
+data/
+runs/
+models/
+outputs/
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Secrets and local environments
+.env
+.env.*
+!.env.example
+.venv/
+.idea/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Model and cache files
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.gguf
