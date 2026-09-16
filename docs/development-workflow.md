@@ -83,7 +83,7 @@ docker --version
 
 Git 忽略已包括：`data/`、`runs/`、`models/`、`.env`、`__pycache__/`、`.venv/` 等。服务器上运行前先确认 `df -h`；视频、解码帧和模型缓存可能占用大量磁盘。不要将缓存放在 `/tmp/affine-l20-preflight-20260912/ram-shards`：用户提供的检查结果显示该 tmpfs 已使用 93%，而且其内容可能属于其他任务。
 
-有 Git 远程仓库时：Windows 提交并推送，服务器在 `~/video-demo` 拉取同一提交，再运行分析。没有远程仓库时可临时用 `scp` 传输代码包；远程地址确定后配置 `origin`。首次推送只推 `main` 和功能分支，先检查 `git status`、`git diff --cached --stat`，确认没有视频、模型或秘密。
+已配置远程仓库 `maomaozhe/video-demo`。Windows 提交并推送，服务器在 `~/video-demo` 拉取同一提交，再运行分析。服务器通过 HTTPS 克隆仓库是可行的；如果默认落在 `main`，执行 `git fetch origin`、`git switch feat/mvp-pipeline`。今后服务器主要拉取代码，避免在服务器和 Windows 同时编辑同一文件。私有仓库的 HTTPS 认证若提示输入密码，应使用 GitHub 个人访问令牌，并仅在交互提示中输入；不要把令牌拼进 URL、脚本或日志。[GitHub 远程仓库说明](https://docs.github.com/en/get-started/git-basics/about-remote-repositories)
 
 少量样本上传示例：
 
