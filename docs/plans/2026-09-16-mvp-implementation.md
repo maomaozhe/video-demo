@@ -34,7 +34,7 @@
 
 **通过条件：** 使用合成短视频即可在 Windows 或服务器验证纯逻辑，无须下载大模型。
 
-**当前状态：** 已实现视频探测和事件时间/证据校验；`PYTHONPATH=src python -m unittest discover -s tests -v` 在 Windows Python 3.12 下通过 7 项测试。服务器 Python 3.11 复测待代码同步后执行。
+**当前状态：** 已实现视频探测和事件时间/证据校验；`PYTHONPATH=src python -m unittest discover -s tests -v` 在 Windows Python 3.12 下通过 7 项测试，服务器 Python 3.11 下同样通过 7 项。服务器上的实际样例视频探测成功。
 
 ## Task 3：视频描述的最小闭环
 
@@ -71,5 +71,5 @@
 
 ## 当前阻塞信息
 
-- 需要一段有使用权限、包含人物反复出镜的短视频做效果验证。
+- 已有用户提交的样例视频 `data/example/xzg_314700.mp4` 可用于技术冒烟测试；其中是否存在同一人物反复出镜，需运行后人工核实。
 - GitHub HTTPS 已在服务器使用；代码推送由 Windows 进行，服务器拉取同一提交。
