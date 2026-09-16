@@ -6,7 +6,7 @@
 
 **Architecture:** Windows 仓库是代码来源，服务器 HTTPS 拉取功能分支并运行 GPU 推理。视频理解与人物跟踪分别产出中间 JSON，最后由聚合模块校验时间和证据并生成结果。
 
-**Tech Stack:** Python 3.11、FFmpeg、PyTorch CUDA、Qwen3-VL、RT-DETR、BoT-SORT、FastReID、faster-whisper、pytest。
+**Tech Stack:** Python 3.11、FFmpeg、PyTorch CUDA、Qwen3-VL、RT-DETR、BoT-SORT、FastReID、faster-whisper；纯逻辑测试先用标准库 `unittest`。
 
 ---
 
@@ -21,6 +21,8 @@
 
 **通过条件：** GPU 张量运算成功；系统 Python 和其他进程未受影响。
 
+**当前状态：** Python 3.11.16 和虚拟环境已就绪；PyTorch CUDA 依赖仍在后台下载，GPU 张量测试待执行。
+
 ## Task 2：输入、时间戳与结果结构
 
 **Files:** 创建 `pyproject.toml`、`src/video_demo/schema.py`、`src/video_demo/video.py`、`tests/test_video.py`、`tests/test_schema.py`。
@@ -31,6 +33,8 @@
 4. 运行全量测试；提交。
 
 **通过条件：** 使用合成短视频即可在 Windows 或服务器验证纯逻辑，无须下载大模型。
+
+**当前状态：** 已实现视频探测和事件时间/证据校验；`PYTHONPATH=src python -m unittest discover -s tests -v` 在 Windows Python 3.12 下通过 7 项测试。服务器 Python 3.11 复测待代码同步后执行。
 
 ## Task 3：视频描述的最小闭环
 

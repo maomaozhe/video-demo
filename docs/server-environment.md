@@ -29,7 +29,7 @@
 
 初次使用未固定版本的 CUDA 12.8 索引，解析到 PyTorch 2.11.0，下载其 `cuda-toolkit==12.8.1` 依赖时超时。官方[历史版本安装页](https://pytorch.org/get-started/previous-versions/)提供 PyTorch 2.9.1 与 torchvision 0.24.1 的 CUDA 12.8 组合。固定该组合后，依赖解析不再包含 `cuda-toolkit`，但下载 `nvidia-curand-cu12` 时仍超时。对该文件的单独 1 MiB 范围请求成功，因此正在用较长 HTTP 超时验证是否为大文件请求超时。
 
-提高 `UV_HTTP_TIMEOUT` 后部分依赖继续下载，但安装长时间没有完成，2026-09-16 人工中止该安装请求。随后检查确认：虚拟环境里**没有安装 PyTorch**，没有残留的 `uv pip install` 进程；`~/.cache/uv` 有约 2.3 GB 下载缓存。不能据此声称 GPU 推理已可用。下一次尝试需限制并行下载或改用可验证的镜像/容器，并在安装后运行 GPU 张量测试。安装过程未修改系统驱动和系统 Python。
+提高 `UV_HTTP_TIMEOUT` 后部分依赖继续下载，但安装长时间没有完成，2026-09-16 人工中止该安装请求。随后检查确认：虚拟环境里**没有安装 PyTorch**，没有残留的 `uv pip install` 进程；`~/.cache/uv` 当时有约 2.3 GB 下载缓存。下载测速显示 NVIDIA 包站约 1.2 MB/s，307 MB 的包需要数分钟。Docker 已安装，但当前 `dylan` 账号无权限访问 Docker daemon。现改用 `UV_CONCURRENT_DOWNLOADS=1 UV_HTTP_TIMEOUT=300` 在后台继续安装 PyTorch 2.9.1 + torchvision 0.24.1，日志位于被 Git 忽略的 `~/video-demo/runs/torch-install.log`。安装尚未完成，不能据此声称 GPU 推理已可用；系统驱动和系统 Python 均未修改。
 
 ## 下一步验证
 
