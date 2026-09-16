@@ -47,6 +47,8 @@
 
 **通过条件：** 一个样本视频能从 CLI 离线生成可解析 JSON 与中文摘要。
 
+**当前状态：** 已实现固定时间片、证据帧抽取、Qwen3-VL 适配层、CLI、JSON/Markdown/manifest 输出及部分处理标记。本地用替代模型运行 12 项测试通过；服务器真实 Qwen3-VL 推理待 PyTorch、依赖和权重安装后验证。此阶段的事件仍是片段描述，未达到人物关联和细粒度动作验收。
+
 ## Task 4：人物跟踪与跨镜头关联
 
 **Files:** 创建 `src/video_demo/tracking.py`、`src/video_demo/reid.py`、`tests/test_identity.py`。

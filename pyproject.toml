@@ -9,5 +9,8 @@ description = "Local video event and person tracking MVP"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+video-demo = "video_demo.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]

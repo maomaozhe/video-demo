@@ -1,0 +1,34 @@
+# video-demo
+
+本地视频理解 MVP。当前已实现输入校验、按固定时间片抽取证据帧、调用本地 Qwen3-VL 生成保守的中文描述，并写出 JSON、Markdown 与运行清单。人物跨镜头关联、语音转写和细粒度任务状态仍在后续阶段。
+
+## 服务器准备
+
+在 `~/video-demo` 的 Python 3.11 虚拟环境安装 PyTorch CUDA 版本（见 [`docs/server-environment.md`](docs/server-environment.md)），然后安装模型依赖：
+
+```bash
+uv pip install --python .venv/bin/python -e . 'transformers>=4.57,<5' accelerate 'qwen-vl-utils>=0.0.14'
+```
+
+首次运行会下载 Qwen3-VL 权重到 Hugging Face 缓存。国内网络不稳定时可预先从 ModelScope 下载权重，并将本地模型目录传给 `--model`。不要把权重、运行产物或新的原始视频提交到 Git。
+
+## 冒烟测试
+
+先用一个 20 秒片段验证加载与输出：
+
+```bash
+PYTHONPATH=src .venv/bin/python -m video_demo.cli analyze data/example/xzg_314700.mp4 \
+  --output runs/sample-smoke --model Qwen/Qwen3-VL-8B-Instruct --max-segments 1
+```
+
+成功后去掉 `--max-segments 1` 处理整个视频。默认每 20 秒抽取 4 帧；可用 `--segment-seconds` 和 `--frames-per-segment` 调整。使用 `--max-segments` 时结果标记 `complete=false`，不能视作整段视频结论。
+
+输出包含 `result.json`、`summary.md`、`manifest.json`、`run.log` 和 `evidence/*.jpg`。当前事件是一段采样帧的描述，`person_id` 为 `null`，`people` 为空；`review_required=true`，需人工核对细节。GPU 模型尚未完成服务器实测，因此此命令的真实推理性能和模型兼容性仍待验证。
+
+## 测试
+
+```bash
+PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v
+```
+
+详细设计见 [`docs/mvp-technical-spec.md`](docs/mvp-technical-spec.md)，实施状态见 [`docs/plans/2026-09-16-mvp-implementation.md`](docs/plans/2026-09-16-mvp-implementation.md)。
