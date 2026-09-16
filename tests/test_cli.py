@@ -18,6 +18,11 @@ class FakeDescriber:
         return "画面中有红色背景。"
 
 
+class FailingDescriber(FakeDescriber):
+    def describe(self, frames):
+        raise RuntimeError("model failed")
+
+
 class CliTests(unittest.TestCase):
     def test_missing_video_exits_with_input_error(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -43,6 +48,22 @@ class CliTests(unittest.TestCase):
             self.assertEqual(json.loads((output / "result.json").read_text(encoding="utf-8"))["events"][0]["action"],
                              "画面中有红色背景。")
             self.assertTrue((output / "manifest.json").is_file())
+
+    def test_model_failure_writes_run_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video = root / "sample.mp4"
+            subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=160x90:r=10",
+                 "-t", "1", "-c:v", "mpeg4", "-y", str(video)],
+                check=True, capture_output=True,
+            )
+            output = root / "output"
+            with patch("video_demo.vlm.QwenDescriber", FailingDescriber):
+                code = main(["analyze", str(video), "--output", str(output)])
+
+            self.assertEqual(code, 3)
+            self.assertIn("model failed", (output / "run.log").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@
 - 服务器可访问 `astral.sh`、PyTorch CUDA 12.8 索引和 Hugging Face 的 Qwen3-VL 配置文件。
 - `uv`、Python 3.11.16 和项目虚拟环境已安装，系统 Python 仍为 3.8.10。
 - 服务器已拉取 `b082632`，在项目 Python 3.11 虚拟环境运行 `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v`，7 项测试通过。
+- 服务器随后拉取 `9232f94`，同一命令复测通过 12 项；`PYTHONPATH=src .venv/bin/python -m video_demo.cli --help` 正常显示 `analyze` 子命令。
 - 已用项目代码探测样例 `data/example/xzg_314700.mp4`：207234 ms、1280×720、30 FPS、含音轨。该样例由用户主动提交到 Git，是此前“不提交原始视频”约定的一次例外。
 - 视频模型权重尚未下载。
 
