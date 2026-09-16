@@ -25,6 +25,7 @@
 - `uv`、Python 3.11.16 和项目虚拟环境已安装，系统 Python 仍为 3.8.10。
 - 服务器已拉取 `b082632`，在项目 Python 3.11 虚拟环境运行 `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -v`，7 项测试通过。
 - 服务器随后拉取 `9232f94`，同一命令复测通过 12 项；`PYTHONPATH=src .venv/bin/python -m video_demo.cli --help` 正常显示 `analyze` 子命令。
+- 服务器再拉取 `0592107`，运行 `PYTHONPATH=src .venv/bin/python -m unittest discover -s tests -q` 通过 18 项测试。该结果不代表模型权重已安装或真实视频推理已运行。
 - 已用项目代码探测样例 `data/example/xzg_314700.mp4`：207234 ms、1280×720、30 FPS、含音轨。该样例由用户主动提交到 Git，是此前“不提交原始视频”约定的一次例外。
 - 视频模型权重尚未下载。
 
