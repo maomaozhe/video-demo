@@ -90,6 +90,22 @@ class ResultStoreTests(unittest.TestCase):
             with self.assertRaises(KeyError):
                 store.get_run("../valid")
 
+    def test_serves_narrative_sample_frames_but_not_unreferenced_images(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = make_run(root, "valid", "a" * 64)
+            (run / "evidence" / "F2.jpg").write_bytes(b"second frame")
+            (run / "evidence" / "secret.jpg").write_bytes(b"private frame")
+            (run / "frames.json").write_text(json.dumps({"F2": {"timestamp_ms": 1500,
+                "image": "evidence/F2.jpg"}}), encoding="utf-8")
+            (run / "narrative.json").write_text(json.dumps({"segments": [
+                {"frame_ids": ["F2"]}]}), encoding="utf-8")
+
+            store = ResultStore(root)
+            self.assertEqual(store.read_evidence("valid", "F2.jpg"), b"second frame")
+            with self.assertRaises(KeyError):
+                store.read_evidence("valid", "secret.jpg")
+
     def test_returns_original_summary_and_json_files(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

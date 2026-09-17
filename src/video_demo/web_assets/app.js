@@ -34,7 +34,7 @@ function runLabel(run) {
   const kind = runKind(run);
   return (kind === 'current' ? '推荐 · 完整规格运行' : kind === 'baseline' ? '旧版 · 仅视频描述' : '测试 · 部分片段') + ' · ' + run.event_count + ' 条';
 }
-function renderMarkdown(markdown) {
+function renderMarkdown(markdown, runId) {
   const container = get('summary-content');
   container.replaceChildren();
   let list = null;
@@ -48,6 +48,21 @@ function renderMarkdown(markdown) {
     } else if (line.startsWith('- ')) {
       if (!list) { list = node('ul'); container.append(list); }
       list.append(node('li', '', line.slice(2)));
+    } else if (line.startsWith('采样证据帧：')) {
+      list = null;
+      const links = node('div', 'frame-links');
+      links.append(node('span', '', '点击采样帧核对画面：'));
+      for (const frameId of line.slice('采样证据帧：'.length).split('、')) {
+        if (!/^F[0-9]{9}$/.test(frameId)) continue;
+        const source = runUrl(runId, '/evidence/' + frameId + '.jpg');
+        const caption = frameId + ' · ' + time(Number(frameId.slice(1)));
+        const button = node('button', 'frame-link', time(Number(frameId.slice(1))));
+        button.type = 'button';
+        button.setAttribute('aria-label', '查看采样帧 ' + caption);
+        button.addEventListener('click', () => showImage(source, caption));
+        links.append(button);
+      }
+      container.append(links);
     } else {
       container.append(node('p', '', line)); list = null;
     }
@@ -208,7 +223,7 @@ function renderRun(detail) {
   get('summary-title').textContent = hasNarrative ? '全片描述与分段细节' : '事件摘要';
   get('summary-download').textContent = hasNarrative ? '下载 narrative.md ↗' : '下载 summary.md ↗';
   get('summary-download').href = runUrl(detail.id, '/files/' + (hasNarrative ? 'narrative.md' : 'summary.md'));
-  renderMarkdown(hasNarrative ? detail.narrative : detail.summary);
+  renderMarkdown(hasNarrative ? detail.narrative : detail.summary, detail.id);
   renderWarnings(result.warnings);
   renderEvents(events, detail.id);
   get('json-content').textContent = JSON.stringify(result, null, 2);

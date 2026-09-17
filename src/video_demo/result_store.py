@@ -108,6 +108,23 @@ class ResultStore:
                 referenced = True
                 break
         if not referenced:
+            directory = self._directory(run_id)
+            narrative_path, frames_path = directory / "narrative.json", directory / "frames.json"
+            if all(path.is_file() and not path.is_symlink() and path.resolve().parent == directory
+                   for path in (narrative_path, frames_path)):
+                try:
+                    narrative = json.loads(narrative_path.read_text(encoding="utf-8"))
+                    frames = json.loads(frames_path.read_text(encoding="utf-8"))
+                    referenced = any(
+                        isinstance(segment, dict) and isinstance(segment.get("frame_ids"), list)
+                        and any(isinstance(frame_id, str) and isinstance(frames.get(frame_id), dict)
+                                and frames[frame_id].get("image") == expected
+                                for frame_id in segment["frame_ids"])
+                        for segment in narrative.get("segments", [])
+                    )
+                except (OSError, UnicodeError, json.JSONDecodeError, TypeError, AttributeError):
+                    referenced = False
+        if not referenced:
             raise KeyError(filename)
         evidence_dir = self._directory(run_id) / "evidence"
         path = evidence_dir / filename

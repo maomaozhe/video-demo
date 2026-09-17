@@ -69,6 +69,9 @@ button { font: inherit; }
 .summary-content p { margin: 0 0 12px; }
 .summary-content ul { margin: 0 0 12px; padding-left: 23px; }
 .summary-content li { padding: 2px 0; }
+.frame-links { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 9px 0 19px; font-size: 11px; color: #8492a6; }
+.frame-link { border: 1px solid #dbe5f5; border-radius: 7px; padding: 5px 8px; color: #355bc9; background: #f4f7ff; cursor: zoom-in; font-size: 11px; }
+.frame-link:hover, .frame-link:focus-visible { background: #e7eeff; outline: 2px solid #a3b6ed; }
 .warnings { margin-top: 16px; padding: 16px 20px; background: #fff8e9; border: 1px solid #f4e7ca; border-radius: 12px; color: #8f6b2e; font-size: 12px; line-height: 1.7; }
 .warnings strong { color: #7f5d23; }
 .warnings ul { margin: 6px 0 0; padding-left: 18px; }
