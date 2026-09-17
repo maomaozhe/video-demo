@@ -6,7 +6,7 @@ from pathlib import Path
 from video_demo.result_store import ResultStore
 
 
-def make_run(root: Path, name: str, sha: str, *, complete: bool = True, created_at: str = "2026-09-17T10:00:00Z") -> Path:
+def make_run(root: Path, name: str, sha: str, *, complete: bool = True, created_at: str = "2026-09-17T10:00:00Z", pipeline: bool = False) -> Path:
     directory = root / name
     (directory / "evidence").mkdir(parents=True)
     (directory / "evidence" / "F1.jpg").write_bytes(b"jpeg bytes")
@@ -18,14 +18,35 @@ def make_run(root: Path, name: str, sha: str, *, complete: bool = True, created_
         "warnings": [],
     }), encoding="utf-8")
     (directory / "summary.md").write_text("# 摘要\n\n- 搭建积木\n", encoding="utf-8")
-    (directory / "manifest.json").write_text(json.dumps({
+    manifest = {
         "input": "/data/example.mp4", "input_sha256": sha,
         "model": "Qwen3-VL-8B", "created_at": created_at,
-    }), encoding="utf-8")
+    }
+    if pipeline:
+        manifest.pop("model")
+        manifest["models"] = {"vlm": "Qwen3-VL-8B", "detector": "RT-DETR"}
+    (directory / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return directory
 
 
 class ResultStoreTests(unittest.TestCase):
+    def test_labels_runs_and_prefers_full_pipeline_over_newer_baseline(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            sha = "a" * 64
+            current = make_run(root, "current", sha, pipeline=True, created_at="2026-09-17T10:00:00Z")
+            (current / "tracks.json").write_text("{}", encoding="utf-8")
+            make_run(root, "baseline", sha, created_at="2026-09-17T11:00:00Z")
+            make_run(root, "smoke", sha, complete=False, pipeline=True, created_at="2026-09-17T12:00:00Z")
+
+            store = ResultStore(root)
+            video = store.list_videos()[0]
+            self.assertEqual(video["preferred_run_id"], "current")
+            self.assertEqual({run["id"]: run["kind"] for run in video["runs"]},
+                             {"current": "current", "baseline": "baseline", "smoke": "test"})
+            self.assertIn("tracks.json", store.get_run("current")["downloads"])
+            self.assertNotIn("tracks.json", store.get_run("baseline")["downloads"])
+
     def test_groups_runs_by_video_and_prefers_latest_complete_run(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

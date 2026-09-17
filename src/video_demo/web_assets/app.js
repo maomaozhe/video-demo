@@ -25,7 +25,14 @@ function setTab(name) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
-  ['overview', 'json', 'files'].forEach((tab) => { get('tab-' + tab).hidden = tab !== name; });
+  ['overview', 'files'].forEach((tab) => { get('tab-' + tab).hidden = tab !== name; });
+}
+function runKind(run) {
+  return run.kind || (run.complete ? 'baseline' : 'test');
+}
+function runLabel(run) {
+  const kind = runKind(run);
+  return (kind === 'current' ? '推荐 · 完整规格运行' : kind === 'baseline' ? '旧版 · 仅视频描述' : '测试 · 部分片段') + ' · ' + run.event_count + ' 条';
 }
 function renderMarkdown(markdown) {
   const container = get('summary-content');
@@ -56,17 +63,32 @@ function renderVideos() {
     const button = node('button', 'video-item' + (selected ? ' active' : ''));
     button.type = 'button';
     button.append(node('span', 'video-name', video.name));
-    button.append(node('span', 'video-meta', video.runs.length + ' 次运行 · ' + date(video.runs[0].created_at)));
+    button.append(node('span', 'video-meta', video.runs.length + ' 次分析运行'));
     button.addEventListener('click', () => loadRun(video.preferred_run_id));
     group.append(button);
     if (selected) {
       const options = node('div', 'run-options');
-      for (const run of video.runs) {
-        const label = run.id + ' · ' + (run.complete ? '完整' : '部分') + ' · ' + run.event_count + ' 段';
-        const option = node('button', 'run-option' + (run.id === selectedRunId ? ' active' : ''), label);
+      const preferred = video.runs.find((run) => run.id === video.preferred_run_id);
+      if (preferred) {
+        const option = node('button', 'run-option primary' + (preferred.id === selectedRunId ? ' active' : ''));
         option.type = 'button';
-        option.addEventListener('click', () => loadRun(run.id));
+        option.append(node('span', '', runLabel(preferred)), node('small', '', preferred.id));
+        option.addEventListener('click', () => loadRun(preferred.id));
         options.append(option);
+      }
+      const others = video.runs.filter((run) => run.id !== video.preferred_run_id);
+      if (others.length) {
+        const archive = node('details', 'run-archive');
+        archive.open = others.some((run) => run.id === selectedRunId);
+        archive.append(node('summary', '', '旧版与测试记录（' + others.length + '）'));
+        for (const run of others) {
+          const option = node('button', 'run-option' + (run.id === selectedRunId ? ' active' : ''));
+          option.type = 'button';
+          option.append(node('span', '', runLabel(run)), node('small', '', run.id));
+          option.addEventListener('click', () => loadRun(run.id));
+          archive.append(option);
+        }
+        options.append(archive);
       }
       group.append(options);
     }
@@ -129,16 +151,42 @@ function renderEvents(events, runId) {
     container.append(card);
   }
 }
-function renderDownloads(runId) {
+function renderDownloads(runId, downloads) {
   const container = get('download-list');
   container.replaceChildren();
-  for (const filename of ['summary.md', 'result.json', 'manifest.json']) {
-    const link = node('a', 'download-link', '↓  ' + filename);
+  const descriptions = {
+    'summary.md': ['中文摘要', '给人阅读，概括事件和限制'],
+    'result.json': ['结构化结果', '事件、时间、人物标记及证据引用'],
+    'tracks.json': ['人物轨迹', '局部轨迹和待复核相似候选，不代表真实人数'],
+    'transcript.json': ['语音转写', '仅在识别出可信语音时生成'],
+    'manifest.json': ['运行记录', '模型、参数、版本和运行时间'],
+  };
+  for (const filename of ['summary.md', 'result.json', 'tracks.json', 'transcript.json', 'manifest.json']) {
+    if (!downloads.includes(filename)) continue;
+    const link = node('a', 'download-link');
+    link.append(node('strong', '', descriptions[filename][0] + ' ↗'), node('span', '', descriptions[filename][1]), node('code', '', filename));
     link.href = runUrl(runId, '/files/' + filename);
     container.append(link);
   }
   get('summary-download').href = runUrl(runId, '/files/summary.md');
-  get('json-download').href = runUrl(runId, '/files/result.json');
+}
+function renderGuidance(match) {
+  const container = get('run-guidance');
+  container.replaceChildren();
+  const kind = match ? runKind(match.run) : 'test';
+  const title = kind === 'current' ? '当前应看的完整结果' : kind === 'baseline' ? '这是早期对照结果' : '这是短片测试记录';
+  const description = kind === 'current'
+    ? '按 MVP 规格运行了整条视频，包含检测、跟踪与事件证据。人物轨迹会碎片化，编号和动作仍需人工核对。'
+    : kind === 'baseline'
+      ? '只用视频大模型按固定片段描述画面；没有人物检测、跟踪和语音转写。请以完整规格运行为主。'
+      : '只处理了部分视频，用来检查流水线能否工作；“部分分析”不表示整条视频已分析完。';
+  container.append(node('strong', '', title), node('span', '', description));
+  if (match && match.run.id !== match.video.preferred_run_id) {
+    const link = node('button', 'guidance-link', '查看推荐的完整结果 →');
+    link.type = 'button';
+    link.addEventListener('click', () => loadRun(match.video.preferred_run_id));
+    container.append(link);
+  }
 }
 function renderRun(detail) {
   const match = videos.flatMap((video) => video.runs.map((run) => ({video, run}))).find((pair) => pair.run.id === detail.id);
@@ -150,16 +198,17 @@ function renderRun(detail) {
   get('run-subtitle').textContent = detail.id + ' · ' + (detail.manifest.model || (detail.manifest.models && detail.manifest.models.vlm) || '模型未知') + ' · ' + date(detail.manifest.created_at);
   get('run-status').textContent = result.complete ? '完整分析' : '部分分析';
   get('run-status').classList.toggle('partial', !result.complete);
+  renderGuidance(match);
   get('video-duration').textContent = time(result.video && result.video.duration_ms);
   get('event-count').textContent = String(events.length);
   get('evidence-count').textContent = String(frameCount);
-  get('person-count').textContent = people.length ? String(people.length) : '未关联';
+  get('person-count').textContent = String(people.length);
   renderMarkdown(detail.summary);
   renderWarnings(result.warnings);
   renderEvents(events, detail.id);
   get('json-content').textContent = JSON.stringify(result, null, 2);
   get('manifest-content').textContent = JSON.stringify(detail.manifest, null, 2);
-  renderDownloads(detail.id);
+  renderDownloads(detail.id, detail.downloads || ['summary.md', 'result.json', 'manifest.json']);
   get('loading').hidden = true;
   get('error').hidden = true;
   get('empty').hidden = true;

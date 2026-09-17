@@ -11,7 +11,7 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-mark" aria-hidden="true">▶</span><span>video-demo</span><span class="brand-separator">/</span><strong>结果中心</strong></div>
-    <span class="access-badge"><span class="status-dot"></span>本机安全访问</span>
+    <span class="access-badge"><span class="status-dot"></span>只读结果页</span>
   </header>
   <div class="workspace">
     <aside class="sidebar" aria-label="视频列表">
@@ -20,7 +20,7 @@
         <span id="video-count" class="count">0</span>
       </div>
       <div id="video-list" class="video-list"></div>
-      <p class="sidebar-note">显示服务器 runs 目录中的分析结果。新增视频分析后，刷新页面即可查看。</p>
+      <p class="sidebar-note">一次运行是一份分析记录，并非一条新视频。默认展示完整规格运行；旧版和短片测试可展开查看。</p>
     </aside>
     <main class="main-area">
       <div id="loading" class="state-card">正在读取视频结果…</div>
@@ -35,17 +35,17 @@
           <div class="hero-top"><span class="eyebrow">ANALYSIS RESULT</span><span id="run-status" class="status-pill"></span></div>
           <h1 id="video-title"></h1>
           <p id="run-subtitle" class="subtitle"></p>
+          <div id="run-guidance" class="run-guidance"></div>
           <div class="stats">
             <div class="stat"><span class="stat-label">视频时长</span><strong id="video-duration">—</strong></div>
             <div class="stat"><span class="stat-label">事件片段</span><strong id="event-count">—</strong></div>
-            <div class="stat"><span class="stat-label">证据帧</span><strong id="evidence-count">—</strong></div>
-            <div class="stat"><span class="stat-label">人物 ID</span><strong id="person-count">—</strong></div>
+            <div class="stat"><span class="stat-label">事件证据引用</span><strong id="evidence-count">—</strong></div>
+            <div class="stat"><span class="stat-label">局部人物轨迹</span><strong id="person-count">—</strong></div>
           </div>
         </section>
         <nav class="tabs" aria-label="结果内容">
           <button class="tab active" data-tab="overview" type="button" aria-pressed="true">摘要与时间线</button>
-          <button class="tab" data-tab="json" type="button" aria-pressed="false">原始 JSON</button>
-          <button class="tab" data-tab="files" type="button" aria-pressed="false">文件与运行信息</button>
+          <button class="tab" data-tab="files" type="button" aria-pressed="false">产物说明与下载</button>
         </nav>
         <section id="tab-overview" class="tab-panel">
           <div class="section-heading"><div><p class="eyebrow">SUMMARY</p><h2>视频摘要</h2></div><a id="summary-download" class="text-link" href="#">下载 summary.md ↗</a></div>
@@ -54,15 +54,13 @@
           <div class="section-heading timeline-heading"><div><p class="eyebrow">TIMELINE</p><h2>事件时间线</h2></div><span class="section-hint">点击证据帧可放大查看</span></div>
           <div id="event-list" class="event-list"></div>
         </section>
-        <section id="tab-json" class="tab-panel" hidden>
-          <div class="section-heading"><div><p class="eyebrow">RAW DATA</p><h2>result.json</h2></div><a id="json-download" class="text-link" href="#">下载 JSON ↗</a></div>
-          <pre id="json-content" class="code-card"></pre>
-        </section>
         <section id="tab-files" class="tab-panel" hidden>
-          <div class="section-heading"><div><p class="eyebrow">ARTIFACTS</p><h2>文件与运行信息</h2></div></div>
-          <div class="card file-card"><p>直接下载本次运行生成的原始文件。</p><div id="download-list" class="download-list"></div></div>
-          <div class="section-heading manifest-heading"><div><p class="eyebrow">MANIFEST</p><h2>运行参数</h2></div></div>
-          <pre id="manifest-content" class="code-card"></pre>
+          <div class="section-heading"><div><p class="eyebrow">ARTIFACTS</p><h2>这次运行的产物</h2></div></div>
+          <div class="card file-card"><p>日常查看：先读本页摘要和时间线；需要留档时下载摘要。JSON、轨迹和运行参数用于程序处理或排查。</p><div id="download-list" class="download-list"></div><p class="internal-files">服务器目录里的 evidence/ 是证据图片；frames.json 是采样帧索引；run.log 是运行日志；events.partial.json 是处理中断时的恢复记录；*.before-reconcile 是更正前备份。它们不需要逐个阅读。</p></div>
+          <details class="technical-details"><summary>展开技术原文：result.json 与 manifest.json</summary>
+            <h3>结构化结果 result.json</h3><pre id="json-content" class="code-card"></pre>
+            <h3>运行参数 manifest.json</h3><pre id="manifest-content" class="code-card"></pre>
+          </details>
         </section>
       </div>
     </main>

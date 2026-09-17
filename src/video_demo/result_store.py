@@ -42,8 +42,11 @@ class ResultStore:
                 raise ValueError("invalid input identity")
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError, TypeError) as exc:
             raise KeyError(run_id) from exc
+        downloads = sorted(filename for filename in _DOWNLOADS | _OPTIONAL_DOWNLOADS
+                           if (directory / filename).is_file() and not (directory / filename).is_symlink())
         return {"id": run_id, "video_id": manifest["input_sha256"].lower(),
-                "result": result, "summary": summary, "manifest": manifest}
+                "result": result, "summary": summary, "manifest": manifest,
+                "downloads": downloads}
 
     def list_videos(self) -> list[dict]:
         if not self.root.is_dir():
@@ -67,11 +70,15 @@ class ResultStore:
                 "id": run["id"], "created_at": str(manifest.get("created_at", "")),
                 "model": str(manifest.get("model") or manifest.get("models", {}).get("vlm", "")),
                 "complete": result.get("complete") is True,
+                "kind": ("test" if result.get("complete") is not True else
+                         "current" if isinstance(manifest.get("models"), dict) and manifest["models"].get("detector") else
+                         "baseline"),
                 "event_count": len(result["events"]),
             })
         for group in groups.values():
             group["runs"].sort(key=lambda item: (item["created_at"], item["id"]), reverse=True)
-            preferred = next((run for run in group["runs"] if run["complete"]), group["runs"][0])
+            preferred = next((run for run in group["runs"] if run["kind"] == "current"),
+                             next((run for run in group["runs"] if run["complete"]), group["runs"][0]))
             group["preferred_run_id"] = preferred["id"]
         return sorted(groups.values(), key=lambda item: item["runs"][0]["created_at"], reverse=True)
 
