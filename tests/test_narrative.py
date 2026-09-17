@@ -23,6 +23,10 @@ class FakeNarrator:
         self.synthesis_input = segments
         return "视频中多名人物在室内操作积木；无法确认跨片段是否为同一人。"
 
+    def synthesize_overview(self, stages):
+        self.overview_input = stages
+        return "全片可见多名人物在室内操作积木，无法确认跨片段身份。"
+
 
 class NarrativeTests(unittest.TestCase):
     def test_synthesizes_long_video_through_short_stage_summaries(self):
@@ -53,9 +57,10 @@ class NarrativeTests(unittest.TestCase):
 
             narrative = generate_narrative(run, model)
 
-            self.assertEqual(model.calls, [3, 3, 3, 2, 4])
+            self.assertEqual(model.calls, [3, 3, 3, 2])
+            self.assertEqual(len(model.overview_input), 4)
             self.assertEqual(len(narrative["segments"]), 11)
-            self.assertIn("跨片段身份未确认", narrative["overall"])
+            self.assertIn("无法确认跨片段身份", narrative["overall"])
 
     def test_long_segment_retries_in_smaller_frame_groups(self):
         class LimitedNarrator(FakeNarrator):

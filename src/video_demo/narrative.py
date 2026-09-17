@@ -107,7 +107,7 @@ def generate_narrative(run: Path, model, *, segment_ms: int = 20000,
             stages.append(stage)
             _write(partial_path, {"input_sha256": manifest.get("input_sha256"),
                                   "segments": segments, "stages": stages})
-    overall = model.synthesize(stages or segments).strip()
+    overall = (model.synthesize_overview(stages) if stages else model.synthesize(segments)).strip()
     if not overall:
         raise RuntimeError("Empty full-video synthesis")
     narrative = {"model": getattr(model, "model_id", "unknown"),

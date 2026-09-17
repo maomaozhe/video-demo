@@ -81,6 +81,28 @@ class QwenDescriber:
         return self._processor.batch_decode(output_ids, skip_special_tokens=True,
                                             clean_up_tokenization_spaces=False)[0]
 
+    def synthesize_overview(self, stages: list[dict]) -> str:
+        """Summarize stage analyses without repeating their detailed timelines."""
+        notes = "\n".join(f'{item["start_ms"] / 1000:.1f}–{item["end_ms"] / 1000:.1f} 秒：'
+                          f'{item["description"]}' for item in stages)
+        instruction = (
+            "请根据以下四个阶段的视觉观察，写一段简体中文全片综述，约400到600字。"
+            "只概括共同的室内场景、儿童的积木活动及前后可见变化；每个阶段最多提一个不同的变化。"
+            "不要逐人逐帧列举衣服或秒数，不要复述全部细节，不要重复背景。"
+            "不同阶段相似衣着不能证明是同一人；不要断言任务完成、结构倒塌或采样间未显示的过程。"
+            "保持连贯的一个段落，不要输出标题、列表或解释。\n\n" + notes
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": instruction}]}]
+        prompt = self._processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = self._processor(text=[prompt], return_tensors="pt").to(self._model.device)
+        with self._torch.inference_mode():
+            generated = self._model.generate(**inputs, max_new_tokens=1536, do_sample=False)
+        output_ids = generated[:, inputs.input_ids.shape[1]:]
+        if output_ids.shape[1] >= 1536:
+            raise RuntimeError("Full-video overview reached the output token limit")
+        return self._processor.batch_decode(output_ids, skip_special_tokens=True,
+                                            clean_up_tokenization_spaces=False)[0]
+
     def extract(self, frames: list[SampledFrame], tracks: list[dict],
                 transcript: list[dict], tasks: list[str]) -> list[dict]:
         """Request scene-local candidates; final validation is outside the model."""
