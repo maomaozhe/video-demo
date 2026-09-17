@@ -68,15 +68,15 @@ class QwenDescriber:
             "合并重复的场景、衣着和持续动作；保留确有证据的具体动作与关键时间范围。"
             "只依据下面的观察，不补充新动作、新人物、动机或完成结论。"
             "不同片段的衣着相似不等于同一人，不能确认身份时说无法确认，不要自行合并人物。"
-            "不要逐条照抄，也不要输出 JSON 或标题。\n\n" + notes
+            "全文控制在约600到1000字，不要逐条照抄，也不要输出 JSON 或标题。\n\n" + notes
         )
         messages = [{"role": "user", "content": [{"type": "text", "text": instruction}]}]
         prompt = self._processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         inputs = self._processor(text=[prompt], return_tensors="pt").to(self._model.device)
         with self._torch.inference_mode():
-            generated = self._model.generate(**inputs, max_new_tokens=1536, do_sample=False)
+            generated = self._model.generate(**inputs, max_new_tokens=2048, do_sample=False)
         output_ids = generated[:, inputs.input_ids.shape[1]:]
-        if output_ids.shape[1] >= 1536:
+        if output_ids.shape[1] >= 2048:
             raise RuntimeError("Full-video synthesis reached the output token limit")
         return self._processor.batch_decode(output_ids, skip_special_tokens=True,
                                             clean_up_tokenization_spaces=False)[0]

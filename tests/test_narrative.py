@@ -25,6 +25,38 @@ class FakeNarrator:
 
 
 class NarrativeTests(unittest.TestCase):
+    def test_synthesizes_long_video_through_short_stage_summaries(self):
+        class LimitedSynthesis(FakeNarrator):
+            def __init__(self):
+                super().__init__()
+                self.calls = []
+
+            def synthesize(self, segments):
+                self.calls.append(len(segments))
+                if len(segments) > 4:
+                    raise RuntimeError("Full-video synthesis reached the output token limit")
+                return "根据相邻片段，儿童在室内搭建积木；跨片段身份未确认。"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Path(temporary)
+            (run / "evidence").mkdir()
+            frames = {}
+            for index in range(11):
+                ms = index * 20000 + 500
+                frame_id = f"F{ms}"
+                (run / "evidence" / f"{frame_id}.jpg").write_bytes(b"jpeg")
+                frames[frame_id] = {"timestamp_ms": ms, "image": f"evidence/{frame_id}.jpg"}
+            (run / "frames.json").write_text(json.dumps(frames), encoding="utf-8")
+            (run / "result.json").write_text('{"video":{"duration_ms":220000},"complete":true,"events":[]}', encoding="utf-8")
+            (run / "manifest.json").write_text('{"input":"/data/video.mp4"}', encoding="utf-8")
+            model = LimitedSynthesis()
+
+            narrative = generate_narrative(run, model)
+
+            self.assertEqual(model.calls, [3, 3, 3, 2, 4])
+            self.assertEqual(len(narrative["segments"]), 11)
+            self.assertIn("跨片段身份未确认", narrative["overall"])
+
     def test_long_segment_retries_in_smaller_frame_groups(self):
         class LimitedNarrator(FakeNarrator):
             def describe(self, frames):
