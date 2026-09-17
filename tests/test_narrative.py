@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from video_demo.narrative import generate_narrative
+from video_demo.narrative import generate_narrative, guard_overview
 from video_demo.cli import main
 from unittest.mock import patch
 
@@ -29,6 +29,18 @@ class FakeNarrator:
 
 
 class NarrativeTests(unittest.TestCase):
+    def test_overview_drops_unsupported_outcomes_and_specific_contact_claims(self):
+        raw = ("在室内，多名儿童持续搭建积木，部分倒塌或散落。"
+               "中后期儿童互动增多，一人轻扶或抱住另一人。"
+               "整体活动持续，结构始终未完成或稳定。")
+        guarded = guard_overview(raw, [{"action": "搭建积木", "status": "进行中"},
+                                       {"action": "推倒积木塔", "status": "无法判断"}])
+        self.assertIn("在室内，多名儿童持续搭建积木", guarded)
+        self.assertNotIn("倒塌", guarded)
+        self.assertNotIn("轻扶", guarded)
+        self.assertNotIn("始终未完成", guarded)
+        self.assertIn("是否完成需要人工核对", guarded)
+
     def test_synthesizes_long_video_through_short_stage_summaries(self):
         class LimitedSynthesis(FakeNarrator):
             def __init__(self):

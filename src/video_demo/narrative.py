@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 import time
 
 from .analyze import SampledFrame
@@ -50,6 +51,23 @@ def _describe_frames(model, selected: list[SampledFrame]) -> str:
     if not description:
         raise RuntimeError("Empty detailed description")
     return description
+
+
+def guard_overview(text: str, events: list[dict]) -> str:
+    """Remove unverified outcome and contact claims from readable synthesis."""
+    guarded_terms = ("倒塌", "推倒", "已完成", "未完成", "稳定", "轻扶", "抱住", "准备", "清理", "协作")
+    supported = {term for event in events if event.get("status") in {"观察到", "已完成"}
+                 for term in guarded_terms if term in event.get("action", "")}
+    sentences = []
+    for sentence in re.split(r"[。！？]", text):
+        clauses = [clause.strip() for clause in re.split(r"[，；]", sentence)
+                   if clause.strip() and not any(term in clause and term not in supported
+                                                 for term in guarded_terms)]
+        if clauses:
+            sentences.append("，".join(clauses) + "。")
+    if not sentences:
+        sentences = ["采样画面显示人物与场景活动，具体变化无法确认。"]
+    return "".join(sentences) + "积木结构变化的原因、任务是否完成需要人工核对；相似衣着不能证明跨片段是同一人。"
 
 
 def generate_narrative(run: Path, model, *, segment_ms: int = 20000,
@@ -110,11 +128,13 @@ def generate_narrative(run: Path, model, *, segment_ms: int = 20000,
     overall = (model.synthesize_overview(stages) if stages else model.synthesize(segments)).strip()
     if not overall:
         raise RuntimeError("Empty full-video synthesis")
+    overall = guard_overview(overall, result["events"])
     narrative = {"model": getattr(model, "model_id", "unknown"),
                  "generated_at": datetime.now(timezone.utc).isoformat(),
                  "overall": overall, "segments": segments, "stages": stages,
                  "note": "基于采样画面的模型描述；衣着、动作和跨片段身份需人工核对。"}
-    lines = ["# 视频详细描述", "", f'输入视频：{Path(manifest["input"]).name}', "",
+    lines = ["# 视频详细描述（模型生成，待人工复核）", "", f'输入视频：{Path(manifest["input"]).name}', "",
+             "逐段文字来自采样帧；下方事件时间线是单独校验的数据。衣着、动作与人物对应关系仍需对照视频核实。", "",
              "## 全片综合描述", "", overall, "", "## 分段细节", ""]
     for segment in segments:
         lines.extend([f'## {segment["start_ms"] / 1000:.1f}–{segment["end_ms"] / 1000:.1f} 秒',
