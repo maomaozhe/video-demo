@@ -25,9 +25,10 @@ class QwenDescriber:
 
     def describe(self, frames: list[SampledFrame]) -> str:
         content = [{"type": "text", "text": (
-            "按时间顺序观察这些采样画面。用简体中文简短描述能直接看见的人物动作、物体和变化。"
-            "只描述有画面证据的事实；看不清时明确说无法判断。"
-            "不要猜测人物姓名、动机、任务完成状态或未显示的过程。"
+            "按时间顺序观察这些采样画面。请用一句不超过80个汉字的简体中文，"
+            "概括整个片段中最主要、可直接观察到的人物动作和涉及的物体。"
+            "不要逐帧列举，不写时间戳、项目符号或背景细节。"
+            "不要猜测人物姓名、动机、任务完成状态或未显示的过程；看不清时说无法判断。"
         )}]
         for frame in frames:
             content.extend([
@@ -43,6 +44,8 @@ class QwenDescriber:
         with self._torch.inference_mode():
             generated = self._model.generate(**inputs, max_new_tokens=256, do_sample=False)
         output_ids = generated[:, inputs.input_ids.shape[1]:]
+        if output_ids.shape[1] >= 256:
+            raise RuntimeError("Model description reached the output token limit")
         return self._processor.batch_decode(
             output_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]

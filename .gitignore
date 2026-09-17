@@ -18,6 +18,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+*.egg-info/
 
 # Model and cache files
 *.safetensors
