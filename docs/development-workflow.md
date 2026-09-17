@@ -10,7 +10,7 @@ Windows：写代码、提交 Git、运行不依赖 GPU 的单元测试
     │ Git 推送/拉取；少量样本用 SCP 上传
     ▼
 Linux L20 服务器：存放模型和视频、运行 GPU 推理、调试完整流程
-    │ JSON/Markdown/关键帧，用 SCP 下载或 VS Code Remote-SSH 查看
+    │ 本机 SSH 隧道访问结果网页，也可用 SCP 或 VS Code Remote-SSH 查看文件
     ▼
 Windows：人工核对事件与人物 ID，修正代码
 ```
@@ -83,7 +83,7 @@ docker --version
 
 Git 忽略已包括：`data/`、`runs/`、`models/`、`.env`、`__pycache__/`、`.venv/` 等。服务器上运行前先确认 `df -h`；视频、解码帧和模型缓存可能占用大量磁盘。不要将缓存放在 `/tmp/affine-l20-preflight-20260912/ram-shards`：用户提供的检查结果显示该 tmpfs 已使用 93%，而且其内容可能属于其他任务。
 
-有 Git 远程仓库时：Windows 提交并推送，服务器在 `~/video-demo` 拉取同一提交，再运行分析。没有远程仓库时可临时用 `scp` 传输代码包；远程地址确定后配置 `origin`。首次推送只推 `main` 和功能分支，先检查 `git status`、`git diff --cached --stat`，确认没有视频、模型或秘密。
+已配置远程仓库 `maomaozhe/video-demo`。Windows 提交并推送，服务器在 `~/video-demo` 拉取同一提交，再运行分析。服务器通过 HTTPS 克隆仓库是可行的；如果默认落在 `main`，执行 `git fetch origin`、`git switch feat/mvp-pipeline`。今后服务器主要拉取代码，避免在服务器和 Windows 同时编辑同一文件。私有仓库的 HTTPS 认证若提示输入密码，应使用 GitHub 个人访问令牌，并仅在交互提示中输入；不要把令牌拼进 URL、脚本或日志。[GitHub 远程仓库说明](https://docs.github.com/en/get-started/git-basics/about-remote-repositories)
 
 少量样本上传示例：
 
@@ -91,7 +91,7 @@ Git 忽略已包括：`data/`、`runs/`、`models/`、`.env`、`__pycache__/`、
 scp "E:\GitHub\video-demo\data\example\sample.mp4" video-l20:~/video-demo/data/samples/
 ```
 
-命令中的 `sample.mp4` 只是示例文件名；当前 `data/example` 目录没有样本文件。
+命令中的 `sample.mp4` 只是示例文件名；当前样例 `data/example/xzg_314700.mp4` 已在服务器完成完整分析，见[样例运行报告](sample-run-2026-09-17.md)。
 
 ## 5. 调试节奏
 
@@ -99,12 +99,31 @@ scp "E:\GitHub\video-demo\data\example\sample.mp4" video-l20:~/video-demo/data/s
 2. **服务器模型冒烟测试**：先用 10–30 秒视频，单独确认 Qwen3-VL 能输出一个带时间点的事件，再确认检测与跟踪能够输出人物轨迹。
 3. **完整链路测试**：只处理一个短视频，逐步生成中间文件；每一阶段失败时可复用已完成的解码帧/轨迹/转写，避免重复推理。
 4. **远程断点调试**：用 VS Code Remote-SSH 打开服务器工作目录，在服务器 Python 环境设置断点。长任务放在 `tmux` 中执行并写日志，断线后可继续查看。
-5. **结果复核**：下载或远程查看 `result.json`、`summary.md` 和证据帧，重点检查“同一人再次出现”和“任务已完成”的证据。
+5. **结果复核**：按下节打开结果网页，查看 `result.json`、`summary.md` 和证据帧，重点检查“同一人再次出现”和“任务已完成”的证据。
 
 每次运行记录 Git 提交号、模型权重版本、输入文件哈希、采样率和阈值。调试时先使用固定短视频和固定参数，便于比较改动效果。
+
+### 结果网页与 SSH 隧道
+
+结果网页读取服务器 `~/video-demo/runs/`，只提供查看和下载。服务器终端执行：
+
+```bash
+cd ~/video-demo
+PYTHONPATH=src .venv/bin/python -m video_demo.web --runs-dir runs --port 8765
+```
+
+Windows PowerShell 的另一个窗口执行：
+
+```powershell
+ssh -N -L 127.0.0.1:8765:127.0.0.1:8765 dylan@101.47.18.72
+```
+
+登录成功后，浏览器访问 [http://127.0.0.1:8765/](http://127.0.0.1:8765/)。两个终端需保持运行。若 Windows 端口 8765 已被其他程序占用，可将命令第一个 `8765` 改为其他空闲端口，并用该端口访问浏览器；服务器端端口保持 8765。新增分析结果后刷新网页即可。页面按输入文件哈希归组，默认选择最近的完整运行；左侧可切换其他运行。
+
+截至 2026-09-17，服务器已启动该服务，Windows 本机也已建立隧道。服务绑定 `127.0.0.1:8765`，公网地址上的 8765 端口不可直接访问；本机隧道中断后按上述命令重连。服务重启或服务器重启后，在服务器重新运行启动命令。`runs/` 的内容仍不提交 Git。
 
 ## 6. 首个可交付里程碑
 
 先完成：`一个 10–30 秒本地样本 → 服务器 Qwen3-VL 推理 → 带时间点的事件 JSON → 中文摘要`。然后接人物检测、跟踪和跨镜头重识别。这个顺序能先确认 GPU、模型、解码和输出格式，避免人物算法尚未完成时整个项目没有可运行结果。
 
-下一步需要服务器体检命令的输出，以及一段有权使用、包含人物反复出镜的样本视频。不要再发送密码、私钥或访问令牌。
+服务器体检和首个完整样例分析已完成。下一步接入人物检测与跨片段关联，并用重复出镜片段验证匿名人物 ID。不要再发送密码、私钥或访问令牌。
