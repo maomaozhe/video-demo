@@ -25,6 +25,23 @@ PYTHONPATH=src .venv/bin/python -m video_demo.cli analyze data/example/xzg_31470
 
 输出包含 `result.json`、`summary.md`、`manifest.json`、`run.log` 和 `evidence/*.jpg`。当前事件是一段采样帧的描述，`person_id` 为 `null`，`people` 为空；`review_required=true`，需人工核对细节。L20 上已成功处理完整样例，耗时和已发现的描述质量问题见 [`docs/sample-run-2026-09-17.md`](docs/sample-run-2026-09-17.md)。
 
+## 在网页查看结果
+
+服务器 `~/video-demo/runs/` 下的多次运行可在只读网页中查看。页面按输入视频汇总运行记录，展示摘要、时间线、证据帧、原始 JSON、运行参数和文件下载；优先打开最新的完整运行。先在服务器启动服务：
+
+```bash
+cd ~/video-demo
+PYTHONPATH=src .venv/bin/python -m video_demo.web --runs-dir runs --port 8765
+```
+
+保持该终端运行。在 Windows 的另一个 PowerShell 窗口建立 SSH 隧道（交互式输入 SSH 密码或使用已配置的密钥）：
+
+```powershell
+ssh -N -L 127.0.0.1:8765:127.0.0.1:8765 dylan@101.47.18.72
+```
+
+保持隧道窗口运行，然后在 Windows 浏览器打开 **http://127.0.0.1:8765/**。服务器仅监听本机回环地址，网页不会直接暴露在公网。关闭隧道窗口后，需要重新运行上面的 `ssh` 命令才能访问。当前服务器已启动结果服务并有 `sample-full` 完整样例可查看；服务进程若停止，需在服务器重新执行启动命令。详见 [`docs/development-workflow.md`](docs/development-workflow.md)。
+
 ## 测试
 
 ```bash
