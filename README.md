@@ -29,6 +29,8 @@ PYTHONPATH=src .venv/bin/python -m video_demo.cli analyze data/example/xzg_31470
 
 输出包含 `result.json`、`summary.md`、`tracks.json`、`frames.json`、`manifest.json`、`run.log`、`evidence/*.jpg`；有可信语音时另有 `transcript.json`。处理过程中保存 `events.partial.json`。未校准 FastReID 阈值时不自动合并跨镜头轨迹，`P1` 等只表示当前局部轨迹并附待复核状态。完整规格对齐样例及效果限制见 [`docs/spec-alignment-run-2026-09-17.md`](docs/spec-alignment-run-2026-09-17.md)。
 
+完整分析还会生成 `narrative.md`（全片综合描述和逐段细节）与 `narrative.json`（逐段文字及采样帧编号）。已有完整运行可复用已保存的帧追加生成：`PYTHONPATH=src .venv/bin/python -m video_demo.cli narrate --run runs/spec-full --model models/Qwen3-VL-8B-Instruct`。详细报告是模型对采样画面的描述，衣着、动作和跨片段身份仍需人工核对；原有 `summary.md` 保留为校验事件的摘要。
+
 完整运行后可用 `PYTHONPATH=src .venv/bin/python scripts/validate_run.py runs/spec-full` 检查时间、人物轨迹、证据帧和摘要是否一致。此检查是结构审计，不替代人工核对动作或人物身份。
 
 ## 在网页查看结果

@@ -71,6 +71,12 @@ class PipelineTests(unittest.TestCase):
                          "action": "人物经过画面", "status": "观察到",
                          "evidence_frame_ids": [frames[0].frame_id]}]
 
+            def describe(self, frames):
+                return "画面中有人在室内移动。"
+
+            def synthesize(self, segments):
+                return "视频中有人在室内移动，身份未确认。"
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             video = root / "clip.mp4"
@@ -90,6 +96,7 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(json.loads((output / "tracks.json").read_text(encoding="utf-8"))
                              ["association"], "unavailable")
             self.assertTrue((output / "manifest.json").is_file())
+            self.assertIn("视频中有人", (output / "narrative.md").read_text(encoding="utf-8"))
             self.assertEqual(validate_run(output)["errors"], [])
             self.assertEqual(reconcile(output)["filtered_evidence"], 0)
             self.assertEqual(reconcile(output)["filtered_evidence"], 0)

@@ -26,7 +26,24 @@ def main(argv: list[str] | None = None) -> int:
     analyze.add_argument("--reid-weights", type=Path)
     analyze.add_argument("--merge-threshold", type=float)
     analyze.add_argument("--review-threshold", type=float, default=0.75)
+    narrate = commands.add_parser("narrate", help="Add a detailed narrative to a completed run")
+    narrate.add_argument("--run", type=Path, required=True)
+    narrate.add_argument("--model", default="models/Qwen3-VL-8B-Instruct")
     args = parser.parse_args(argv)
+
+    if args.command == "narrate":
+        if not all((args.run / name).is_file() for name in ("result.json", "frames.json", "manifest.json")):
+            parser.error("narrate requires result.json, frames.json and manifest.json in --run")
+        try:
+            from .narrative import generate_narrative
+            from .vlm import QwenDescriber
+
+            generate_narrative(args.run, QwenDescriber(args.model))
+        except Exception:
+            with (args.run / "run.log").open("a", encoding="utf-8") as log:
+                log.write(traceback.format_exc())
+            return 3
+        return 0
 
     if args.segment_seconds <= 0 or args.frames_per_segment <= 0 or (
         args.max_segments is not None and args.max_segments <= 0

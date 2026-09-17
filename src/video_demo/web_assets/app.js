@@ -155,20 +155,21 @@ function renderDownloads(runId, downloads) {
   const container = get('download-list');
   container.replaceChildren();
   const descriptions = {
+    'narrative.md': ['详细视频描述', '全片综合分析、逐段场景和人物动作；模型生成，需核对'],
     'summary.md': ['中文摘要', '给人阅读，概括事件和限制'],
+    'narrative.json': ['描述与采样依据', '每段文字及对应采样帧编号'],
     'result.json': ['结构化结果', '事件、时间、人物标记及证据引用'],
     'tracks.json': ['人物轨迹', '局部轨迹和待复核相似候选，不代表真实人数'],
     'transcript.json': ['语音转写', '仅在识别出可信语音时生成'],
     'manifest.json': ['运行记录', '模型、参数、版本和运行时间'],
   };
-  for (const filename of ['summary.md', 'result.json', 'tracks.json', 'transcript.json', 'manifest.json']) {
+  for (const filename of ['narrative.md', 'summary.md', 'result.json', 'narrative.json', 'tracks.json', 'transcript.json', 'manifest.json']) {
     if (!downloads.includes(filename)) continue;
     const link = node('a', 'download-link');
     link.append(node('strong', '', descriptions[filename][0] + ' ↗'), node('span', '', descriptions[filename][1]), node('code', '', filename));
     link.href = runUrl(runId, '/files/' + filename);
     container.append(link);
   }
-  get('summary-download').href = runUrl(runId, '/files/summary.md');
 }
 function renderGuidance(match) {
   const container = get('run-guidance');
@@ -203,7 +204,11 @@ function renderRun(detail) {
   get('event-count').textContent = String(events.length);
   get('evidence-count').textContent = String(frameCount);
   get('person-count').textContent = String(people.length);
-  renderMarkdown(detail.summary);
+  const hasNarrative = typeof detail.narrative === 'string' && detail.narrative.trim();
+  get('summary-title').textContent = hasNarrative ? '全片描述与分段细节' : '事件摘要';
+  get('summary-download').textContent = hasNarrative ? '下载 narrative.md ↗' : '下载 summary.md ↗';
+  get('summary-download').href = runUrl(detail.id, '/files/' + (hasNarrative ? 'narrative.md' : 'summary.md'));
+  renderMarkdown(hasNarrative ? detail.narrative : detail.summary);
   renderWarnings(result.warnings);
   renderEvents(events, detail.id);
   get('json-content').textContent = JSON.stringify(result, null, 2);

@@ -61,7 +61,9 @@ def make_server(runs_dir: Path, port: int = 8765) -> ThreadingHTTPServer:
                         "manifest.json": "application/json; charset=utf-8",
                         "tracks.json": "application/json; charset=utf-8",
                         "transcript.json": "application/json; charset=utf-8",
+                        "narrative.json": "application/json; charset=utf-8",
                         "summary.md": "text/markdown; charset=utf-8",
+                        "narrative.md": "text/markdown; charset=utf-8",
                     }.get(filename, "application/octet-stream")
                     self._send(200, store.read_file(match.group(1), filename), content_type, download=filename)
                 elif match := _EVIDENCE.fullmatch(route):

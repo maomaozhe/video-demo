@@ -237,4 +237,9 @@ def analyze_full(video_path: Path, output: Path, model, *, detector_path: str,
         "scene_count": len(scenes), "elapsed_seconds": round(time.monotonic() - started, 2),
         "peak_torch_gpu_allocated_mib": _gpu_peak_mib(),
         "created_at": datetime.now(timezone.utc).isoformat()})
+    if complete and hasattr(model, "describe") and hasattr(model, "synthesize"):
+        from .narrative import generate_narrative
+
+        generate_narrative(output, model, segment_ms=segment_ms)
+        _log(output, "Generated detailed segment and full-video narrative")
     return result

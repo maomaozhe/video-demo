@@ -9,7 +9,7 @@ _RUN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
 _FILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpg|jpeg|png|webp)\Z", re.IGNORECASE)
 _SHA256 = re.compile(r"[0-9a-fA-F]{64}\Z")
 _DOWNLOADS = {"result.json", "summary.md", "manifest.json"}
-_OPTIONAL_DOWNLOADS = {"tracks.json", "transcript.json"}
+_OPTIONAL_DOWNLOADS = {"tracks.json", "transcript.json", "narrative.md", "narrative.json"}
 
 
 class ResultStore:
@@ -34,6 +34,9 @@ class ResultStore:
             result = json.loads((directory / "result.json").read_text(encoding="utf-8"))
             summary = (directory / "summary.md").read_text(encoding="utf-8")
             manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+            narrative_path = directory / "narrative.md"
+            narrative = (narrative_path.read_text(encoding="utf-8") if narrative_path.is_file()
+                         and not narrative_path.is_symlink() and narrative_path.resolve().parent == directory else None)
             if not isinstance(result, dict) or not isinstance(result.get("events"), list):
                 raise ValueError("invalid result")
             if not isinstance(result.get("video"), dict) or not isinstance(manifest, dict):
@@ -45,7 +48,7 @@ class ResultStore:
         downloads = sorted(filename for filename in _DOWNLOADS | _OPTIONAL_DOWNLOADS
                            if (directory / filename).is_file() and not (directory / filename).is_symlink())
         return {"id": run_id, "video_id": manifest["input_sha256"].lower(),
-                "result": result, "summary": summary, "manifest": manifest,
+                "result": result, "summary": summary, "narrative": narrative, "manifest": manifest,
                 "downloads": downloads}
 
     def list_videos(self) -> list[dict]:

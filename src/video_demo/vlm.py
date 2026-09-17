@@ -58,6 +58,29 @@ class QwenDescriber:
             output_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
 
+    def synthesize(self, segments: list[dict]) -> str:
+        """Merge observed segment descriptions into a restrained full-video narrative."""
+        notes = "\n".join(f'{item["start_ms"] / 1000:.1f}–{item["end_ms"] / 1000:.1f} 秒：'
+                          f'{item["description"]}' for item in segments)
+        instruction = (
+            "请把以下按时间顺序的逐段视觉观察，合并成一篇自然流畅的简体中文全片描述。"
+            "先交代场景和活动，再按可区分的人物或衣着叙述可见的动作与变化，最后简述整体过程。"
+            "合并重复的场景、衣着和持续动作；保留确有证据的具体动作与关键时间范围。"
+            "只依据下面的观察，不补充新动作、新人物、动机或完成结论。"
+            "不同片段的衣着相似不等于同一人，不能确认身份时说无法确认，不要自行合并人物。"
+            "不要逐条照抄，也不要输出 JSON 或标题。\n\n" + notes
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": instruction}]}]
+        prompt = self._processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = self._processor(text=[prompt], return_tensors="pt").to(self._model.device)
+        with self._torch.inference_mode():
+            generated = self._model.generate(**inputs, max_new_tokens=1536, do_sample=False)
+        output_ids = generated[:, inputs.input_ids.shape[1]:]
+        if output_ids.shape[1] >= 1536:
+            raise RuntimeError("Full-video synthesis reached the output token limit")
+        return self._processor.batch_decode(output_ids, skip_special_tokens=True,
+                                            clean_up_tokenization_spaces=False)[0]
+
     def extract(self, frames: list[SampledFrame], tracks: list[dict],
                 transcript: list[dict], tasks: list[str]) -> list[dict]:
         """Request scene-local candidates; final validation is outside the model."""

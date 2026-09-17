@@ -1,0 +1,88 @@
+"""Evidence-linked, readable descriptions from an existing structured run."""
+
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+import time
+
+from .analyze import SampledFrame
+
+
+def _write(path: Path, value: dict) -> None:
+    path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _selected_frames(run: Path, frames: dict, start: int, end: int) -> list[SampledFrame]:
+    available = []
+    evidence_dir = (run / "evidence").resolve()
+    for frame_id, item in frames.items():
+        point = item["timestamp_ms"]
+        if start <= point < end:
+            path = run / item["image"]
+            if path.is_symlink() or path.resolve().parent != evidence_dir or not path.is_file():
+                raise ValueError(f"Missing or unsafe evidence frame: {frame_id}")
+            available.append(SampledFrame(point, frame_id, path))
+    available.sort(key=lambda frame: frame.timestamp_ms)
+    if not available:
+        raise ValueError(f"No evidence frames in {start}–{end} ms")
+    chosen = []
+    for index in range(min(4, len(available))):
+        target = start + (end - start) * (2 * index + 1) / 8
+        frame = min(available, key=lambda item: (abs(item.timestamp_ms - target), item.timestamp_ms))
+        if frame not in chosen:
+            chosen.append(frame)
+    return chosen
+
+
+def generate_narrative(run: Path, model, *, segment_ms: int = 20000) -> dict:
+    """Create a detailed report and resume after completed segment descriptions."""
+    started = time.monotonic()
+    run = Path(run)
+    result = json.loads((run / "result.json").read_text(encoding="utf-8"))
+    frames = json.loads((run / "frames.json").read_text(encoding="utf-8"))
+    manifest_path = run / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    duration = result["video"]["duration_ms"]
+    if segment_ms <= 0 or duration <= 0 or not result.get("complete"):
+        raise ValueError("Narrative requires a completed run and positive segment length")
+    partial_path = run / "narrative.partial.json"
+    partial = json.loads(partial_path.read_text(encoding="utf-8")) if partial_path.is_file() else {}
+    completed = partial.get("segments", []) if partial.get("input_sha256") == manifest.get("input_sha256") else []
+    segments = []
+    for start in range(0, duration, segment_ms):
+        end = min(start + segment_ms, duration)
+        selected = _selected_frames(run, frames, start, end)
+        frame_ids = [frame.frame_id for frame in selected]
+        previous = completed[len(segments)] if len(completed) > len(segments) else None
+        if previous and previous.get("start_ms") == start and previous.get("end_ms") == end and previous.get("frame_ids") == frame_ids:
+            segment = previous
+        else:
+            description = model.describe(selected).strip()
+            if not description:
+                raise RuntimeError(f"Empty detailed description for {start}–{end} ms")
+            segment = {"start_ms": start, "end_ms": end, "frame_ids": frame_ids,
+                       "description": description}
+        segments.append(segment)
+        _write(partial_path, {"input_sha256": manifest.get("input_sha256"), "segments": segments})
+    overall = model.synthesize(segments).strip()
+    if not overall:
+        raise RuntimeError("Empty full-video synthesis")
+    narrative = {"model": getattr(model, "model_id", "unknown"),
+                 "generated_at": datetime.now(timezone.utc).isoformat(),
+                 "overall": overall, "segments": segments,
+                 "note": "基于采样画面的模型描述；衣着、动作和跨片段身份需人工核对。"}
+    lines = ["# 视频详细描述", "", f'输入视频：{Path(manifest["input"]).name}', "",
+             "## 全片综合描述", "", overall, "", "## 分段细节", ""]
+    for segment in segments:
+        lines.extend([f'## {segment["start_ms"] / 1000:.1f}–{segment["end_ms"] / 1000:.1f} 秒',
+                      "", segment["description"], "",
+                      "采样证据帧：" + "、".join(segment["frame_ids"]), ""])
+    lines.extend(["## 阅读提示", "", narrative["note"],
+                  "只根据已采样画面描述；采样间发生的动作以及同一人物跨片段身份不能由文字直接确认。", ""])
+    _write(run / "narrative.json", narrative)
+    (run / "narrative.md").write_text("\n".join(lines), encoding="utf-8")
+    manifest["narrative"] = {"model": narrative["model"], "generated_at": narrative["generated_at"],
+                             "segments": len(segments), "elapsed_seconds": round(time.monotonic() - started, 2)}
+    _write(manifest_path, manifest)
+    partial_path.unlink(missing_ok=True)
+    return narrative

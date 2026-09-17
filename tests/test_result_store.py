@@ -101,6 +101,18 @@ class ResultStoreTests(unittest.TestCase):
             with self.assertRaises(KeyError):
                 store.read_file("valid", "../../etc/passwd")
 
+    def test_serves_optional_detailed_report_only_when_present(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            run = make_run(root, "valid", "a" * 64)
+            store = ResultStore(root)
+            self.assertIsNone(store.get_run("valid")["narrative"])
+            with self.assertRaises(KeyError):
+                store.read_file("valid", "narrative.md")
+            (run / "narrative.md").write_text("# 视频详细描述\n\n可见人物在搭建积木。", encoding="utf-8")
+            self.assertIn("可见人物", store.get_run("valid")["narrative"])
+            self.assertIn("narrative.md", store.get_run("valid")["downloads"])
+
     def test_malformed_event_cannot_crash_evidence_endpoint(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
