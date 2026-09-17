@@ -10,6 +10,9 @@ import time
 from .analyze import SampledFrame
 
 
+_UNCERTAINTY_NOTE = "积木结构变化的原因、任务是否完成需要人工核对；相似衣着不能证明跨片段是同一人。"
+
+
 def _write(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -55,6 +58,7 @@ def _describe_frames(model, selected: list[SampledFrame]) -> str:
 
 def guard_overview(text: str, events: list[dict]) -> str:
     """Remove unverified outcome and contact claims from readable synthesis."""
+    text = text.removesuffix(_UNCERTAINTY_NOTE)
     guarded_terms = ("倒塌", "推倒", "已完成", "未完成", "稳定", "轻扶", "抱住", "准备", "清理", "协作")
     supported = {term for event in events if event.get("status") in {"观察到", "已完成"}
                  for term in guarded_terms if term in event.get("action", "")}
@@ -67,7 +71,31 @@ def guard_overview(text: str, events: list[dict]) -> str:
             sentences.append("，".join(clauses) + "。")
     if not sentences:
         sentences = ["采样画面显示人物与场景活动，具体变化无法确认。"]
-    return "".join(sentences) + "积木结构变化的原因、任务是否完成需要人工核对；相似衣着不能证明跨片段是同一人。"
+    return "".join(sentences) + _UNCERTAINTY_NOTE
+
+
+def reconcile_narrative(run: Path) -> dict:
+    """Apply the current outcome guard to an already generated report."""
+    run = Path(run)
+    result = json.loads((run / "result.json").read_text(encoding="utf-8"))
+    narrative_path = run / "narrative.json"
+    narrative = json.loads(narrative_path.read_text(encoding="utf-8"))
+    markdown_path = run / "narrative.md"
+    markdown = markdown_path.read_text(encoding="utf-8")
+    prefix, marker, rest = markdown.partition("## 全片综合描述\n\n")
+    _, separator, suffix = rest.partition("\n\n## 分段细节")
+    if not marker or not separator:
+        raise ValueError("Existing narrative Markdown has no overview or segment section")
+    guarded = guard_overview(narrative["overall"], result["events"])
+    narrative["overall"] = guarded
+    note = "逐段文字来自采样帧；下方事件时间线是单独校验的数据。衣着、动作与人物对应关系仍需对照视频核实。"
+    prefix = prefix.replace("# 视频详细描述\n", "# 视频详细描述（模型生成，待人工复核）\n", 1)
+    if note not in prefix:
+        prefix += note + "\n\n"
+    _write(narrative_path, narrative)
+    markdown_path.write_text(prefix + marker + guarded + "\n\n## 分段细节" + suffix,
+                             encoding="utf-8")
+    return narrative
 
 
 def generate_narrative(run: Path, model, *, segment_ms: int = 20000,

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from video_demo.narrative import generate_narrative, guard_overview
+from video_demo.narrative import generate_narrative, guard_overview, reconcile_narrative
 from video_demo.cli import main
 from unittest.mock import patch
 
@@ -29,6 +29,27 @@ class FakeNarrator:
 
 
 class NarrativeTests(unittest.TestCase):
+    def test_reconciles_existing_report_without_rerunning_model(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Path(temporary)
+            (run / "result.json").write_text(json.dumps({"events": [
+                {"action": "搭建积木", "status": "进行中"}]}), encoding="utf-8")
+            original = {"overall": "孩子搭建积木，部分倒塌，始终未完成。",
+                        "segments": [{"description": "逐段细节"}]}
+            (run / "narrative.json").write_text(json.dumps(original, ensure_ascii=False), encoding="utf-8")
+            (run / "narrative.md").write_text("# 视频详细描述\n\n输入视频：video.mp4\n\n"
+                "## 全片综合描述\n\n孩子搭建积木，部分倒塌，始终未完成。\n\n"
+                "## 分段细节\n\n逐段细节\n", encoding="utf-8")
+
+            revised = reconcile_narrative(run)
+
+            self.assertNotIn("倒塌", revised["overall"])
+            self.assertIn("是否完成需要人工核对", revised["overall"])
+            self.assertEqual(revised["segments"], original["segments"])
+            report = (run / "narrative.md").read_text(encoding="utf-8")
+            self.assertIn(revised["overall"], report)
+            self.assertIn("逐段细节", report)
+
     def test_overview_drops_unsupported_outcomes_and_specific_contact_claims(self):
         raw = ("在室内，多名儿童持续搭建积木，部分倒塌或散落。"
                "中后期儿童互动增多，一人轻扶或抱住另一人。"
