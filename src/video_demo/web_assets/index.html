@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>视频结果 · video-demo</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">▶</span><span>video-demo</span><span class="brand-separator">/</span><strong>结果中心</strong></div>
+    <span class="access-badge"><span class="status-dot"></span>本机安全访问</span>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar" aria-label="视频列表">
+      <div class="sidebar-heading">
+        <div><p class="eyebrow">LIBRARY</p><h2>视频档案</h2></div>
+        <span id="video-count" class="count">0</span>
+      </div>
+      <div id="video-list" class="video-list"></div>
+      <p class="sidebar-note">显示服务器 runs 目录中的分析结果。新增视频分析后，刷新页面即可查看。</p>
+    </aside>
+    <main class="main-area">
+      <div id="loading" class="state-card">正在读取视频结果…</div>
+      <div id="empty" class="state-card" hidden>
+        <span class="empty-icon" aria-hidden="true">▣</span>
+        <h1>还没有分析结果</h1>
+        <p>运行视频分析后，包含 result.json、summary.md 和 manifest.json 的目录会自动出现在这里。</p>
+      </div>
+      <div id="error" class="state-card error-card" hidden></div>
+      <div id="run-view" hidden>
+        <section class="hero">
+          <div class="hero-top"><span class="eyebrow">ANALYSIS RESULT</span><span id="run-status" class="status-pill"></span></div>
+          <h1 id="video-title"></h1>
+          <p id="run-subtitle" class="subtitle"></p>
+          <div class="stats">
+            <div class="stat"><span class="stat-label">视频时长</span><strong id="video-duration">—</strong></div>
+            <div class="stat"><span class="stat-label">事件片段</span><strong id="event-count">—</strong></div>
+            <div class="stat"><span class="stat-label">证据帧</span><strong id="evidence-count">—</strong></div>
+            <div class="stat"><span class="stat-label">人物 ID</span><strong id="person-count">—</strong></div>
+          </div>
+        </section>
+        <nav class="tabs" aria-label="结果内容">
+          <button class="tab active" data-tab="overview" type="button" aria-pressed="true">摘要与时间线</button>
+          <button class="tab" data-tab="json" type="button" aria-pressed="false">原始 JSON</button>
+          <button class="tab" data-tab="files" type="button" aria-pressed="false">文件与运行信息</button>
+        </nav>
+        <section id="tab-overview" class="tab-panel">
+          <div class="section-heading"><div><p class="eyebrow">SUMMARY</p><h2>视频摘要</h2></div><a id="summary-download" class="text-link" href="#">下载 summary.md ↗</a></div>
+          <div id="summary-content" class="card summary-content"></div>
+          <div id="warnings" class="warnings" hidden></div>
+          <div class="section-heading timeline-heading"><div><p class="eyebrow">TIMELINE</p><h2>事件时间线</h2></div><span class="section-hint">点击证据帧可放大查看</span></div>
+          <div id="event-list" class="event-list"></div>
+        </section>
+        <section id="tab-json" class="tab-panel" hidden>
+          <div class="section-heading"><div><p class="eyebrow">RAW DATA</p><h2>result.json</h2></div><a id="json-download" class="text-link" href="#">下载 JSON ↗</a></div>
+          <pre id="json-content" class="code-card"></pre>
+        </section>
+        <section id="tab-files" class="tab-panel" hidden>
+          <div class="section-heading"><div><p class="eyebrow">ARTIFACTS</p><h2>文件与运行信息</h2></div></div>
+          <div class="card file-card"><p>直接下载本次运行生成的原始文件。</p><div id="download-list" class="download-list"></div></div>
+          <div class="section-heading manifest-heading"><div><p class="eyebrow">MANIFEST</p><h2>运行参数</h2></div></div>
+          <pre id="manifest-content" class="code-card"></pre>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog id="image-dialog" class="image-dialog" aria-label="证据帧预览">
+    <button id="image-close" class="image-close" type="button" aria-label="关闭预览">×</button>
+    <img id="image-large" alt="放大的证据帧">
+    <p id="image-caption"></p>
+  </dialog>
+</body>
+</html>
