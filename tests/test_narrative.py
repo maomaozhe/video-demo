@@ -25,6 +25,33 @@ class FakeNarrator:
 
 
 class NarrativeTests(unittest.TestCase):
+    def test_long_segment_retries_in_smaller_frame_groups(self):
+        class LimitedNarrator(FakeNarrator):
+            def describe(self, frames):
+                if len(frames) > 2:
+                    raise RuntimeError("Model description reached the output token limit")
+                self.segments.append([frame.timestamp_ms for frame in frames])
+                return f"看到 {frames[0].timestamp_ms} 至 {frames[-1].timestamp_ms} 毫秒的动作。"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Path(temporary)
+            (run / "evidence").mkdir()
+            frames = {}
+            for ms in (2500, 7500, 12500, 17500):
+                frame_id = f"F{ms}"
+                (run / "evidence" / f"{frame_id}.jpg").write_bytes(b"jpeg")
+                frames[frame_id] = {"timestamp_ms": ms, "image": f"evidence/{frame_id}.jpg"}
+            (run / "frames.json").write_text(json.dumps(frames), encoding="utf-8")
+            (run / "result.json").write_text('{"video":{"duration_ms":20000},"complete":true,"events":[]}', encoding="utf-8")
+            (run / "manifest.json").write_text('{"input":"/data/video.mp4"}', encoding="utf-8")
+            model = LimitedNarrator()
+
+            narrative = generate_narrative(run, model)
+
+            self.assertEqual(model.segments, [[2500, 7500], [12500, 17500]])
+            self.assertIn("2500 至 7500", narrative["segments"][0]["description"])
+            self.assertIn("12500 至 17500", narrative["segments"][0]["description"])
+
     def test_cli_can_add_narrative_to_existing_run_without_reanalyzing_video(self):
         with tempfile.TemporaryDirectory() as temporary:
             run = Path(temporary)
@@ -65,6 +92,25 @@ class NarrativeTests(unittest.TestCase):
             self.assertIn("0.0–20.0 秒", (run / "narrative.md").read_text(encoding="utf-8"))
             self.assertEqual(json.loads((run / "narrative.json").read_text(encoding="utf-8"))["segments"], result["segments"])
             self.assertFalse((run / "narrative.partial.json").exists())
+
+    def test_can_preselect_shorter_groups_for_dense_scenes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            run = Path(temporary)
+            (run / "evidence").mkdir()
+            frames = {}
+            for ms in (2500, 7500, 12500, 17500):
+                frame_id = f"F{ms}"
+                (run / "evidence" / f"{frame_id}.jpg").write_bytes(b"jpeg")
+                frames[frame_id] = {"timestamp_ms": ms, "image": f"evidence/{frame_id}.jpg"}
+            (run / "frames.json").write_text(json.dumps(frames), encoding="utf-8")
+            (run / "result.json").write_text('{"video":{"duration_ms":20000},"complete":true,"events":[]}', encoding="utf-8")
+            (run / "manifest.json").write_text('{"input":"/data/video.mp4"}', encoding="utf-8")
+            model = FakeNarrator()
+
+            narrative = generate_narrative(run, model, frame_group_size=2)
+
+            self.assertEqual(model.segments, [[2500, 7500], [12500, 17500]])
+            self.assertEqual(len(narrative["segments"][0]["frame_ids"]), 4)
 
     def test_resume_keeps_completed_segments_and_rejects_missing_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:

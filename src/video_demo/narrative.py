@@ -34,7 +34,25 @@ def _selected_frames(run: Path, frames: dict, start: int, end: int) -> list[Samp
     return chosen
 
 
-def generate_narrative(run: Path, model, *, segment_ms: int = 20000) -> dict:
+def _describe_frames(model, selected: list[SampledFrame]) -> str:
+    try:
+        description = model.describe(selected).strip()
+    except RuntimeError as exc:
+        if "reached the output token limit" not in str(exc) or len(selected) < 2:
+            raise
+        middle = len(selected) // 2
+        groups = (selected[:middle], selected[middle:])
+        return "\n\n".join(
+            f'{group[0].timestamp_ms / 1000:.1f}–{group[-1].timestamp_ms / 1000:.1f} 秒采样画面：'
+            + _describe_frames(model, group) for group in groups
+        )
+    if not description:
+        raise RuntimeError("Empty detailed description")
+    return description
+
+
+def generate_narrative(run: Path, model, *, segment_ms: int = 20000,
+                       frame_group_size: int = 4) -> dict:
     """Create a detailed report and resume after completed segment descriptions."""
     started = time.monotonic()
     run = Path(run)
@@ -43,7 +61,7 @@ def generate_narrative(run: Path, model, *, segment_ms: int = 20000) -> dict:
     manifest_path = run / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     duration = result["video"]["duration_ms"]
-    if segment_ms <= 0 or duration <= 0 or not result.get("complete"):
+    if segment_ms <= 0 or duration <= 0 or not result.get("complete") or not 1 <= frame_group_size <= 4:
         raise ValueError("Narrative requires a completed run and positive segment length")
     partial_path = run / "narrative.partial.json"
     partial = json.loads(partial_path.read_text(encoding="utf-8")) if partial_path.is_file() else {}
@@ -57,9 +75,15 @@ def generate_narrative(run: Path, model, *, segment_ms: int = 20000) -> dict:
         if previous and previous.get("start_ms") == start and previous.get("end_ms") == end and previous.get("frame_ids") == frame_ids:
             segment = previous
         else:
-            description = model.describe(selected).strip()
-            if not description:
-                raise RuntimeError(f"Empty detailed description for {start}–{end} ms")
+            if len(selected) <= frame_group_size:
+                description = _describe_frames(model, selected)
+            else:
+                groups = [selected[index:index + frame_group_size]
+                          for index in range(0, len(selected), frame_group_size)]
+                description = "\n\n".join(
+                    f'{group[0].timestamp_ms / 1000:.1f}–{group[-1].timestamp_ms / 1000:.1f} 秒采样画面：'
+                    + _describe_frames(model, group) for group in groups
+                )
             segment = {"start_ms": start, "end_ms": end, "frame_ids": frame_ids,
                        "description": description}
         segments.append(segment)

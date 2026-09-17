@@ -240,6 +240,6 @@ def analyze_full(video_path: Path, output: Path, model, *, detector_path: str,
     if complete and hasattr(model, "describe") and hasattr(model, "synthesize"):
         from .narrative import generate_narrative
 
-        generate_narrative(output, model, segment_ms=segment_ms)
+        generate_narrative(output, model, segment_ms=segment_ms, frame_group_size=2)
         _log(output, "Generated detailed segment and full-video narrative")
     return result

@@ -29,6 +29,7 @@ def main(argv: list[str] | None = None) -> int:
     narrate = commands.add_parser("narrate", help="Add a detailed narrative to a completed run")
     narrate.add_argument("--run", type=Path, required=True)
     narrate.add_argument("--model", default="models/Qwen3-VL-8B-Instruct")
+    narrate.add_argument("--frame-group-size", type=int, choices=range(1, 5), default=2)
     args = parser.parse_args(argv)
 
     if args.command == "narrate":
@@ -38,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             from .narrative import generate_narrative
             from .vlm import QwenDescriber
 
-            generate_narrative(args.run, QwenDescriber(args.model))
+            generate_narrative(args.run, QwenDescriber(args.model), frame_group_size=args.frame_group_size)
         except Exception:
             with (args.run / "run.log").open("a", encoding="utf-8") as log:
                 log.write(traceback.format_exc())
