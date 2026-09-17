@@ -50,9 +50,9 @@ class QwenDescriber:
             text=[prompt], images=images, videos=videos, padding=True, return_tensors="pt"
         ).to(self._model.device)
         with self._torch.inference_mode():
-            generated = self._model.generate(**inputs, max_new_tokens=1024, do_sample=False)
+            generated = self._model.generate(**inputs, max_new_tokens=2048, do_sample=False)
         output_ids = generated[:, inputs.input_ids.shape[1]:]
-        if output_ids.shape[1] >= 1024:
+        if output_ids.shape[1] >= 2048:
             raise RuntimeError("Model description reached the output token limit")
         return self._processor.batch_decode(
             output_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
