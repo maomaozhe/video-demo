@@ -32,6 +32,7 @@
 - `models/Qwen3-VL-8B-Instruct` 有四个完整的 safetensors 分片，模型加载成功；目录中还有一个旧的 `.incomplete` 下载残留，未参与加载。
 - 运行 `PYTHONPATH=src .venv/bin/python -m video_demo.cli analyze data/example/xzg_314700.mp4 --output runs/sample-smoke-v2 --model models/Qwen3-VL-8B-Instruct --max-segments 1` 成功处理首个 20 秒片段。产物位于 Git 忽略的 `runs/sample-smoke-v2/`，包括 4 张证据帧、`result.json`、`summary.md`、`manifest.json` 和 `run.log`。结果为一个 32 字中文描述，`complete=false`、`people=[]`，并明确提示人物关联未启用。
 - 同一次首段推理用 `/usr/bin/time` 测得墙钟时间 95.45 秒、进程峰值 RSS 5877932 KiB。首次运行生成了被截断的逐帧描述；已在 `ce8c7b5` 收紧提示词并加入 token 上限检查后重跑成功。
+- 完整 207.234 秒样例推理也已完成：11 个连续片段、44 张证据帧，984.68 秒，显存峰值 18403 MiB。结构和人工抽查见 [样例运行报告](sample-run-2026-09-17.md)。
 
 ## PyTorch 安装记录
 
@@ -41,5 +42,5 @@
 
 ## 下一步验证
 
-1. 完成整段 207 秒样例视频推理，核对所有片段的文字、时间轴和证据帧，记录墙钟时间和峰值显存。
-2. 接入人物检测和跨镜头匹配后，用该样例的重复出镜人物验证匿名 ID。
+1. 接入人物检测和跨镜头匹配后，用该样例的重复出镜人物验证匿名 ID。
+2. 为“倒塌”“已完成”等结果性描述增加证据检查，并接入语音转写。
