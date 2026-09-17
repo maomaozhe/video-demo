@@ -147,7 +147,7 @@ function renderRun(detail) {
   const people = Array.isArray(result.people) ? result.people : [];
   const frameCount = events.reduce((sum, event) => sum + (event && Array.isArray(event.evidence) ? event.evidence.length : 0), 0);
   get('video-title').textContent = match ? match.video.name : '视频结果';
-  get('run-subtitle').textContent = detail.id + ' · ' + (detail.manifest.model || '模型未知') + ' · ' + date(detail.manifest.created_at);
+  get('run-subtitle').textContent = detail.id + ' · ' + (detail.manifest.model || (detail.manifest.models && detail.manifest.models.vlm) || '模型未知') + ' · ' + date(detail.manifest.created_at);
   get('run-status').textContent = result.complete ? '完整分析' : '部分分析';
   get('run-status').classList.toggle('partial', !result.complete);
   get('video-duration').textContent = time(result.video && result.video.duration_ms);

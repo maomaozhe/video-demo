@@ -43,5 +43,14 @@
 
 ## 下一步验证
 
-1. 接入人物检测和跨镜头匹配后，用该样例的重复出镜人物验证匿名 ID。
-2. 为“倒塌”“已完成”等结果性描述增加证据检查，并接入语音转写。
+1. 完整结构化样例运行结束后核对轨迹、事件、证据和性能；运行记录另见规格对齐报告。
+2. 用独立授权标注集校准 FastReID 阈值、抽查结果性事件和评估真实语音。未校准前只输出待复核候选，不把轨迹碎片自动合并。
+
+## 规格对齐新增依赖（2026-09-17）
+
+- `ultralytics 8.4.154` + `lap 0.5.13`：官方 RT-DETR-L 权重 `models/rtdetr-l.pt`，SHA256 `6de60b10d4bc566f00cda0f5b4d64afe4b66d48dc9695d2171effb7859d8e73f`。3 秒真实片段的 RT-DETR/BoT-SORT 跟踪已运行。
+- `FastReID` 官方代码检出 `c9bc3ceb2f7a6438b62fb515ea3df6d1e999e95d`；Market1501 BoT(R50) 权重 `models/market_bot_R50.pth`，SHA256 `fd20067e9f28c67676bcd5b63a7a346589ef0d5b6f0346695d21f1cced20f06b`。真实人体裁剪输出 2048 维向量。
+- `faster-whisper-small` 本地模型 `models/faster-whisper-small/model.bin`，SHA256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671`；`CTranslate2 4.8.2`。本样例的背景声在 Whisper 中引发幻觉，CPU 推理加静音概率过滤后无可信语音；ASR 效果仍需有真实语音的授权样本验证。
+- PySceneDetect `0.7.1` 将当前 207.234 秒样例切为 `[0, 98.100)` 和 `[98.100, 207.234)` 两个镜头。
+
+这些权重和代码留在服务器的 Git 忽略目录 `models/`，运行命令一律指定本地路径。权重哈希是本次下载文件的实测值，不代表业务场景效果已经验收。

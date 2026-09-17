@@ -41,6 +41,13 @@ class ProbeVideoTests(unittest.TestCase):
             with self.assertRaises(VideoProbeError):
                 probe_video(video)
 
+    def test_rejects_unsupported_container(self):
+        with tempfile.TemporaryDirectory() as directory:
+            video = Path(directory) / "clip.avi"
+            video.write_bytes(b"not important")
+            with self.assertRaisesRegex(VideoProbeError, "MP4/MOV"):
+                probe_video(video)
+
 
 if __name__ == "__main__":
     unittest.main()

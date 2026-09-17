@@ -9,6 +9,17 @@ description = "Local video event and person tracking MVP"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+inference = [
+  "transformers>=4.57,<5",
+  "accelerate>=1.15,<2",
+  "qwen-vl-utils>=0.0.14,<1",
+  "scenedetect>=0.7,<1",
+  "faster-whisper>=1.2,<2",
+  "ultralytics>=8.4,<9",
+  "PyYAML>=6,<7",
+]
+
 [project.scripts]
 video-demo = "video_demo.cli:main"
 

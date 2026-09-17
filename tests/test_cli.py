@@ -24,6 +24,11 @@ class FailingDescriber(FakeDescriber):
 
 
 class CliTests(unittest.TestCase):
+    def test_partial_reid_configuration_exits_as_input_error(self):
+        with self.assertRaises(SystemExit) as raised:
+            main(["analyze", "unused.mp4", "--output", "unused", "--reid-weights", "weights.pth"])
+        self.assertEqual(raised.exception.code, 2)
+
     def test_missing_video_exits_with_input_error(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(SystemExit) as raised:

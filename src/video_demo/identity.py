@@ -25,6 +25,26 @@ class IdentityResult:
     review_candidates: list[ReviewCandidate]
 
 
+def prioritize_reviews(result: IdentityResult, scene_by_track: dict[str, int],
+                       *, per_category: int = 3) -> list[ReviewCandidate]:
+    """Keep the strongest cross-scene and local-fragment candidates separately."""
+    if per_category <= 0:
+        raise ValueError("per-category limit must be positive")
+    scenes_by_person: dict[str, set[int]] = {}
+    for track_id, person_id in result.track_to_person.items():
+        scenes_by_person.setdefault(person_id, set()).add(scene_by_track[track_id])
+    selected = []
+    counts: dict[tuple[str, str], int] = {}
+    for item in sorted(result.review_candidates, key=lambda x: -x.similarity):
+        kind = ("same_scene" if scene_by_track[item.track_id] in
+                scenes_by_person[item.possible_person_id] else "cross_scene")
+        key = item.track_id, kind
+        if counts.get(key, 0) < per_category:
+            selected.append(item)
+            counts[key] = counts.get(key, 0) + 1
+    return selected
+
+
 def _cosine(left: tuple[float, ...], right: tuple[float, ...]) -> float:
     return sum(a * b for a, b in zip(left, right)) / (
         math.sqrt(sum(a * a for a in left)) * math.sqrt(sum(b * b for b in right))
@@ -33,13 +53,16 @@ def _cosine(left: tuple[float, ...], right: tuple[float, ...]) -> float:
 
 def associate_tracklets(
     tracklets: list[Tracklet], *, merge_threshold: float, review_threshold: float,
-    ambiguity_margin: float = 0.05,
+    ambiguity_margin: float = 0.05, max_review_candidates: int = 3,
+    merge_enabled: bool = True,
 ) -> IdentityResult:
     """Associate precomputed tracklets; thresholds must be calibrated on local samples."""
     if not 0 <= review_threshold < merge_threshold <= 1:
         raise ValueError("invalid similarity thresholds")
     if not 0 <= ambiguity_margin <= 1:
         raise ValueError("invalid ambiguity margin")
+    if max_review_candidates <= 0:
+        raise ValueError("max review candidates must be positive")
     if not tracklets:
         return IdentityResult({}, [])
 
@@ -68,7 +91,7 @@ def associate_tracklets(
             candidates.append((similarity, person_id))
         candidates.sort(reverse=True)
 
-        if candidates and candidates[0][0] >= merge_threshold and (
+        if merge_enabled and candidates and candidates[0][0] >= merge_threshold and (
             len(candidates) == 1 or candidates[0][0] - candidates[1][0] >= ambiguity_margin
         ):
             person_id = candidates[0][1]
@@ -76,7 +99,7 @@ def associate_tracklets(
         else:
             person_id = f"P{len(groups) + 1}"
             groups[person_id] = [track]
-            for similarity, possible_person_id in candidates:
+            for similarity, possible_person_id in candidates[:max_review_candidates]:
                 if similarity >= review_threshold:
                     review.append(ReviewCandidate(track.track_id, possible_person_id, similarity))
         mapping[track.track_id] = person_id

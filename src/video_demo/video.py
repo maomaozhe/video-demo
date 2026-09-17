@@ -23,6 +23,8 @@ def probe_video(path: Path) -> VideoMetadata:
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(path)
+    if path.suffix.lower() not in {".mp4", ".mov"}:
+        raise VideoProbeError("Input must be MP4/MOV")
 
     try:
         result = subprocess.run(
@@ -53,6 +55,14 @@ def probe_video(path: Path) -> VideoMetadata:
             raise ValueError("non-positive metadata")
     except (KeyError, ValueError, StopIteration, ZeroDivisionError) as exc:
         raise VideoProbeError(f"Invalid video metadata: {exc}") from exc
+
+    try:
+        decoded = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-frames:v", "1",
+                                  "-f", "null", "-"], capture_output=True, text=True, check=False)
+    except OSError as exc:
+        raise VideoProbeError(f"Could not run ffmpeg: {exc}") from exc
+    if decoded.returncode:
+        raise VideoProbeError(f"Could not decode first video frame: {decoded.stderr.strip()}")
 
     return VideoMetadata(
         path=path,

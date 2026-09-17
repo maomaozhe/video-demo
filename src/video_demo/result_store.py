@@ -9,6 +9,7 @@ _RUN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
 _FILE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpg|jpeg|png|webp)\Z", re.IGNORECASE)
 _SHA256 = re.compile(r"[0-9a-fA-F]{64}\Z")
 _DOWNLOADS = {"result.json", "summary.md", "manifest.json"}
+_OPTIONAL_DOWNLOADS = {"tracks.json", "transcript.json"}
 
 
 class ResultStore:
@@ -64,7 +65,7 @@ class ResultStore:
             })
             group["runs"].append({
                 "id": run["id"], "created_at": str(manifest.get("created_at", "")),
-                "model": str(manifest.get("model", "")),
+                "model": str(manifest.get("model") or manifest.get("models", {}).get("vlm", "")),
                 "complete": result.get("complete") is True,
                 "event_count": len(result["events"]),
             })
@@ -75,10 +76,14 @@ class ResultStore:
         return sorted(groups.values(), key=lambda item: item["runs"][0]["created_at"], reverse=True)
 
     def read_file(self, run_id: str, filename: str) -> bytes:
-        if filename not in _DOWNLOADS:
+        if filename not in _DOWNLOADS | _OPTIONAL_DOWNLOADS:
             raise KeyError(filename)
         self.get_run(run_id)
-        return (self._directory(run_id) / filename).read_bytes()
+        directory = self._directory(run_id)
+        path = directory / filename
+        if path.is_symlink() or not path.is_file() or path.resolve().parent != directory:
+            raise KeyError(filename)
+        return path.read_bytes()
 
     def read_evidence(self, run_id: str, filename: str) -> bytes:
         if not _FILE_NAME.fullmatch(filename):

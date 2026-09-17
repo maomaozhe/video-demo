@@ -46,6 +46,7 @@ class WebTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             directory = make_run(Path(temporary), "sample-full", "a" * 64)
             (directory / "evidence" / "secret.jpg").write_bytes(b"secret")
+            (directory / "tracks.json").write_text('{"tracklets": []}', encoding="utf-8")
             with running_server(Path(temporary)) as (_, base):
                 with _open_local(base + "/api/runs/sample-full/files/summary.md") as response:
                     self.assertEqual(response.headers.get_content_type(), "text/markdown")
@@ -53,6 +54,8 @@ class WebTests(unittest.TestCase):
                 with _open_local(base + "/api/runs/sample-full/evidence/F1.jpg") as response:
                     self.assertEqual(response.headers.get_content_type(), "image/jpeg")
                     self.assertEqual(response.read(), b"jpeg bytes")
+                with _open_local(base + "/api/runs/sample-full/files/tracks.json") as response:
+                    self.assertEqual(json.load(response), {"tracklets": []})
                 for route in [
                     "/api/runs/sample-full/evidence/secret.jpg",
                     "/api/runs/%2e%2e/files/manifest.json",
